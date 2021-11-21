@@ -1,0 +1,11 @@
+Here the figues from my
+
+FinalP01.Rmd
+"
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+    "
+    
+    
