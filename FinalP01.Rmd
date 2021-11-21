@@ -1,0 +1,326 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+
+To read to whole *Peer Assessment 1* text click [here](https://github.com/itamaracampos/RepData_PeerAssessment1).
+In this file is only show main points.
+
+```{r}
+#install.packages("tidyverse")
+#install.packages("Hmisc")
+```
+
+
+```{r}
+library(tidyverse) 
+library(Hmisc)
+library(lattice)
+```
+
+
+Note: the dataset and this file (plus code) must be in the same directory.
+
+Save the plots in a directory. First create if don't exist.
+
+```{r}
+dir <- "figure"
+
+if (!dir.exists(dir)){
+dir.create(dir)
+} else {
+    print("Dir already exists!")
+}
+```
+
+
+
+
+#### **1. Loading and preprocessing the data**
+
+ **<span style="color: blue"> Solution  </span>**
+ 
+Download the dataset from the cloud:
+
+```{r}
+ if(!file.exists("getdata-projectfiles-UCI HAR Dataset.zip")) {
+        temp <- tempfile()
+        download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",temp)
+        unzip(temp)
+        unlink(temp)
+}
+```
+
+
+Or download the dataset from gihub directory, click in [View raw](https://github.com/itamaracampos/RepData_PeerAssessment1/blob/master/activity.zip).
+
+```{r} 
+unzip("./activity.zip")
+activityData <- read.csv("./activity.csv")
+activity <- read.csv("activity.csv")
+```
+
+
+```{r} 
+head(activityData)
+head(activity)
+
+summary(activityData)
+summary(activity)
+```
+
+ <span style="color: Green"> Download both ways show the same results. Chose one of those to continue. </span>
+
+```{r} 
+describe(activity)
+```
+
+
+
+#### **2. What is mean total number of steps taken per day?**
+
+ **<span style="color: blue"> Solution </span>**
+
+1. For this part of the assignment, ignore the missing values in the dataset. 1. Calculate the total number of steps taken per day.
+
+```{r}
+totalStepsByDay<-aggregate(steps~date, activity, na.rm = TRUE, sum )
+
+```
+
+
+2. Make a histogram of the total number of steps taken each day.ow same data, display using histogram. Depending how is display the plot can lead to wrong conclusion. 
+
+
+```{r}
+par(mfrow=c(1,2))
+
+plot2a <- hist(totalStepsByDay$steps, xlab=" Total Number of Steps", ylab="Number of Days", 
+     main="Number of Steps",
+     col="lightblue1",
+     border="dodgerblue3", ylim = c(0,30), labels=TRUE) 
+
+plot2b <- hist(totalStepsByDay$steps, xlab=" Total Number of Steps", ylab="Number of Days", 
+     main="Number of Steps",
+     col="lightblue1",
+     border="dodgerblue3", ylim = c(0,20),
+     breaks = seq(0,30000, by=3000), labels=TRUE) #if you the test, play with this factor  breaks = seq(0,30000, by=3000)
+```
+
+
+```{r, echo=FALSE}
+
+# Save the first picture above (on the left) if want use both just copy and past the previous code
+
+File <- "./figure/Figure_Assessment1_task_02.png"
+png(File)
+
+plot2a <- hist(totalStepsByDay$steps, xlab=" Total Number of Steps", ylab="Number of Days", 
+     main="Number of Steps",
+     col="lightblue1",
+     border="dodgerblue3", ylim = c(0,30), labels=TRUE) 
+
+
+dev.off()
+
+```
+
+The **mean** of the total number of steps taken per day:
+
+```{r}
+mean(totalStepsByDay$steps)
+```
+
+**Median** of the total number of steps taken per day:
+
+```{r}
+median(totalStepsByDay$steps)
+```
+
+
+
+
+#### **3. What is the average daily activity pattern?**
+
+ **<span style="color: blue"> Solution </span>**
+
+1. Make a time series plot (i.e. type = “l”) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r}
+average_daily_activity <- aggregate(activity$steps, by=list(activity$interval), FUN=mean, na.rm=TRUE)
+
+names(average_daily_activity) <- c("interval", "mean")
+
+plot(average_daily_activity$interval, average_daily_activity$mean, type = "l", 
+     col="blue", lwd = 2, xlab="Interval", ylab="Average number of steps", main="Average number of steps per intervals")
+```
+
+
+
+```{r, echo=FALSE}
+
+# Save the first picture above 
+File <- "./figure/Figure_Assessment1_task_03.png"
+png(File)
+
+average_daily_activity <- aggregate(activity$steps, by=list(activity$interval), FUN=mean, na.rm=TRUE)
+
+names(average_daily_activity) <- c("interval", "mean")
+
+plot(average_daily_activity$interval, average_daily_activity$mean, type = "l", 
+     col="blue", lwd = 2, xlab="Interval", ylab="Average number of steps", main="Average number of steps per intervals")
+
+dev.off()
+
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+average_daily_activity[which.max(average_daily_activity$mean), ]$interval
+```
+
+
+
+
+
+#### **4. Imputing missing values**
+
+ **<span style="color: blue"> Solution </span>**
+
+1. To remove the possibility of bias, we can remove the missing values. Which are:
+
+```{r}
+sum(is.na(activity$steps))
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset.
+
+
+```{r}
+all_steps <- average_daily_activity$mean[match(activity$interval, average_daily_activity$interval)]
+
+glimpse(all_steps)
+describe(all_steps)
+```
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in
+
+```{r}
+activity_all <- transform(activity, steps = ifelse(is.na(activity$steps), yes = all_steps, no = activity$steps))
+
+total_steps_all <- aggregate(steps ~ date, activity_all, sum)
+
+names(total_steps_all) <- c("date", "daily_steps")
+
+describe(total_steps_all)
+```
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. The **mean** and **median** total number of steps taken per day.
+
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(total_steps_all$daily_steps, col = "pink", xlab = "Total steps per day", 
+     main="Number of Steps",
+     border="dodgerblue3", ylim = c(0,40), labels=TRUE) 
+
+hist(total_steps_all$daily_steps, col = "pink", xlab = "Total steps per day", 
+     main="Number of Steps",
+     border="dodgerblue3", ylim = c(0,30),
+     breaks = seq(0,30000, by=3000), labels=TRUE) #if you want to test, play with this factor  breaks = seq(0,30000, by=3000)
+
+
+```
+
+
+
+```{r, echo=FALSE}
+
+# Save the first picture above on the left
+File <- "./figure/Figure_Assessment1_task_04.png"
+png(File)
+
+hist(total_steps_all$daily_steps, col = "pink", xlab = "Total steps per day",
+     main="Number of Steps",
+     border="dodgerblue3", ylim = c(0,40), labels=TRUE) 
+
+dev.off()
+
+```
+
+```{r}
+mean(total_steps_all$daily_steps)
+median(total_steps_all$daily_steps)
+```
+
+
+
+#### **5. Are there differences in activity patterns between weekdays and weekends?**
+
+
+ **<span style="color: blue"> Solution </span>**
+
+Use weekdays() function.Below two ways to plot the same data.
+
+1. Create a new factor variable in the dataset with two levels -- "weekday" and "weekend"
+
+```{r}
+activity$date <- as.Date(strptime(activity$date, format="%Y-%m-%d"))
+
+activity$datetype <- sapply(activity$date, function(x) {
+  if (weekdays(x) == "Saturday" | weekdays(x) =="Sunday") 
+        {y <- "Weekend"} else 
+            {y <- "Weekday"}
+            y
+  })
+
+describe(activity$datetype)
+```
+
+2. Make a panel plot containing a time series. Using i.e. type = "l. The plot should look something like the following, which was created using **simulated data**
+
+```{r}
+activity_by_date <- aggregate(steps~interval + datetype, activity, mean, na.rm = TRUE)
+
+plot5a <- ggplot(activity_by_date, aes(x = interval , y = steps, color = datetype)) + geom_line() +
+  labs(title = "Average daily steps by type of date", x = "Interval", y = "Average number of steps") +
+   facet_wrap(~datetype, ncol = 1, nrow=2)
+print(plot5a )
+```
+
+
+```{r}
+plot5b <- with(activity_by_date, 
+      xyplot(steps ~ interval | datetype, 
+      type = "l",      
+      main = "Total Number of Steps within Intervals by dayType",
+      xlab = "Daily Intervals",
+      ylab = "Average Number of Steps"))
+print(plot5b )
+```
+
+
+```{r, echo=FALSE}
+
+# Save both pictures above
+File <- "./figure/Figure_Assessment1_task_05a.png"
+png(File)
+print(plot5a )
+dev.off()
+
+File <- "./figure/Figure_Assessment1_task_05b.png"
+png(File)
+print(plot5b )
+dev.off()
+
+```
